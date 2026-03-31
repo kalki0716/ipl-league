@@ -16,8 +16,7 @@ const firebaseConfig = {
   projectId: "ipl-friends-league",
   storageBucket: "ipl-friends-league.firebasestorage.app",
   messagingSenderId: "1074393387493",
-  appId: "1:1074393387493:web:e75bf9888e9310d3af9f0c",
-  measurementId: "G-2QB3N4E7VJ"
+  appId: "1:1074393387493:web:e75bf9888e9310d3af9f0c"
 };
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -26,7 +25,15 @@ const db = getFirestore(app);
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const PLAYERS = ["Chandan Bhai", "Kalki", "Aswani Bhai", "Sagar Bhai", "Silu Bhai", "Sai Bhai"];
-const RANK_POINTS = { 1: 100, 2: 75, 3: 50, 4: -50, 5: -75, 6: -100 };
+const RANK_POINTS = { 
+  1: 100, 
+  2: 75, 
+  3: 50, 
+  4: -50, 
+  5: -75, 
+  6: -100,
+  NA: 0
+};
 const RANK_LABELS = { 1: "1st", 2: "2nd", 3: "3rd", 4: "4th", 5: "5th", 6: "6th" };
 const COLORS = ["#f59e0b", "#3b82f6", "#10b981", "#ec4899", "#8b5cf6", "#f97316"];
 const EMOJIS = ["🦁", "🐯", "🦊", "🐺", "🦅", "🐉"];
@@ -129,9 +136,17 @@ function MatchForm({ onAdd }) {
 
   const validate = () => {
     if (!form.matchNumber || !form.date || !form.match) return "Fill all match details.";
-    const v = PLAYERS.map((p) => parseInt(form.ranks[p]));
-    if (v.some((x) => isNaN(x) || x < 1 || x > 6)) return "Each player needs a rank 1–6.";
-    if (new Set(v).size !== 6) return "All ranks must be unique.";
+    const values = PLAYERS.map((p) => form.ranks[p]);
+
+const numbers = values
+  .filter(v => v !== "NA")
+  .map(v => parseInt(v));
+
+if (numbers.some((x) => isNaN(x) || x < 1 || x > 6))
+  return "Ranks must be between 1–6.";
+
+if (new Set(numbers).size !== numbers.length)
+  return "Duplicate ranks not allowed.";
     return "";
   };
 
@@ -141,7 +156,12 @@ function MatchForm({ onAdd }) {
     setErr("");
     setSubmitting(true);
     const ranks = {};
-    PLAYERS.forEach((p) => (ranks[p] = parseInt(form.ranks[p])));
+    PLAYERS.forEach((p) => {
+  ranks[p] =
+    form.ranks[p] === "NA"
+      ? "NA"
+      : parseInt(form.ranks[p]);
+});
     await onAdd({ ...form, matchNumber: parseInt(form.matchNumber), ranks });
     setForm({ matchNumber: "", date: new Date().toISOString().slice(0, 10), match: "", ranks: init() });
     setSubmitting(false);
@@ -168,7 +188,8 @@ function MatchForm({ onAdd }) {
             <span style={{ color: COLORS[i], fontSize: 11, fontWeight: 700, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p}</span>
             <select value={form.ranks[p]} onChange={(e) => setForm((f) => ({ ...f, ranks: { ...f.ranks, [p]: e.target.value } }))} style={{ background: "#0a0f1a", border: "1px solid #ffffff22", borderRadius: 6, padding: "5px 7px", color: "#f1f5f9", fontSize: 12 }}>
               <option value="">–</option>
-              {[1, 2, 3, 4, 5, 6].map((r) => <option key={r} value={r}>{r}</option>)}
+              <option value="NA">N/A</option>
+                  {[1, 2, 3, 4, 5, 6].map((r) => (   <option key={r} value={r}>{r}</option> ))}
             </select>
           </div>
         ))}
@@ -268,9 +289,9 @@ function History({ matches, onDelete }) {
                   <span style={{ color: COLORS[i], fontSize: 11, fontWeight: 700 }}>{p.split(" ")[0]}</span>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ color: "#64748b", fontSize: 11 }}>{RANK_LABELS[m.ranks[p]]}</span>
-                  <span style={{ color: RANK_POINTS[m.ranks[p]] > 0 ? "#10b981" : "#ef4444", fontWeight: 800, fontSize: 14, fontFamily: "'Bebas Neue',sans-serif" }}>
-                    {RANK_POINTS[m.ranks[p]] > 0 ? "+" : ""}{RANK_POINTS[m.ranks[p]]}
+                  <span style={{ color: "#64748b", fontSize: 11 }}>{m.ranks[p] === "NA" ? "N/A" : RANK_LABELS[m.ranks[p]]}</span>
+                  <span style={{ color: RANK_POINTS[m.ranks[p]] ?? 0 > 0 ? "#10b981" : "#ef4444", fontWeight: 800, fontSize: 14, fontFamily: "'Bebas Neue',sans-serif" }}>
+                    {RANK_POINTS[m.ranks[p]] ?? 0 > 0 ? "+" : ""}{RANK_POINTS[m.ranks[p]] ?? 0}
                   </span>
                 </div>
               </div>
